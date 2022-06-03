@@ -47,7 +47,7 @@ fn draw_hand_model(window: &mut Window, hand: MutexGuard<Hand>)
 
     // Connect thumb joints
     window.draw_line(&Point3::from(hand.get_thumb_coords()[0]), &Point3::from(hand.get_thumb_coords()[1]), &Point3::new(1.0, 1.0, 1.0));
-    window.draw_line(&Point3::from(hand.get_thumb_coords()[1]), &Point3::from(hand.get_index_coords()[2]), &Point3::new(1.0, 1.0, 1.0));
+    window.draw_line(&Point3::from(hand.get_thumb_coords()[1]), &Point3::from(hand.get_thumb_coords()[2]), &Point3::new(1.0, 1.0, 1.0));
 
     // Connect index joints
     window.draw_line(&Point3::from(hand.get_index_coords()[0]), &Point3::from(hand.get_index_coords()[1]), &Point3::new(1.0, 1.0, 1.0));
@@ -75,7 +75,7 @@ fn draw_data(window: &mut Window, hand: MutexGuard<Hand>)
     let font = Font::default();
 
     window.draw_text(
-        format!("Palm:\n{:#?}", hand.get_palm_coords()).as_str(),
+        format!("Palm:\n{:#.2?}", hand.get_palm_coords()).as_str(),
         &Point2::new(0.0, 0.0),
         50.0,
         &font,
@@ -83,7 +83,7 @@ fn draw_data(window: &mut Window, hand: MutexGuard<Hand>)
     );
 
     window.draw_text(
-        format!("Thumb:\n{:#?}", hand.get_thumb_coords()).as_str(),
+        format!("Thumb:\n{:#.2?}", hand.get_thumb_coords()).as_str(),
         &Point2::new(180.0, 0.0),
         50.0,
         &font,
@@ -91,7 +91,7 @@ fn draw_data(window: &mut Window, hand: MutexGuard<Hand>)
     );
 
     window.draw_text(
-        format!("Index:\n{:#?}", hand.get_index_coords()).as_str(),
+        format!("Index:\n{:#.2?}", hand.get_index_coords()).as_str(),
         &Point2::new(360.0, 0.0),
         50.0,
         &font,
@@ -99,7 +99,7 @@ fn draw_data(window: &mut Window, hand: MutexGuard<Hand>)
     );
 
     window.draw_text(
-        format!("Middle:\n{:#?}", hand.get_middle_coords()).as_str(),
+        format!("Middle:\n{:#.2?}", hand.get_middle_coords()).as_str(),
         &Point2::new(540.0, 0.0),
         50.0,
         &font,
@@ -107,7 +107,7 @@ fn draw_data(window: &mut Window, hand: MutexGuard<Hand>)
     );
 
     window.draw_text(
-        format!("Ring:\n{:#?}", hand.get_ring_coords()).as_str(),
+        format!("Ring:\n{:#.2?}", hand.get_ring_coords()).as_str(),
         &Point2::new(720.0, 0.0),
         50.0,
         &font,
@@ -115,8 +115,80 @@ fn draw_data(window: &mut Window, hand: MutexGuard<Hand>)
     );
 
     window.draw_text(
-        format!("Little:\n{:#?}", hand.get_little_coords()).as_str(),
+        format!("Little:\n{:#.2?}", hand.get_little_coords()).as_str(),
         &Point2::new(900.0, 0.0),
+        50.0,
+        &font,
+        &Point3::new(1.0, 1.0, 0.0),
+    );
+
+    window.draw_text(
+        format!("Palm\nEuler:\n{:#.2?}", hand.get_euler(mtg_drivers::hand::HandPart::Palm)).as_str(),
+        &Point2::new(0.0, 1200.0),
+        50.0,
+        &font,
+        &Point3::new(1.0, 1.0, 0.0),
+    );
+
+    window.draw_text(
+        format!("Thumb\nEuler:\n{:#.2?}", hand.get_euler(mtg_drivers::hand::HandPart::Thumb)).as_str(),
+        &Point2::new(180.0, 1200.0),
+        50.0,
+        &font,
+        &Point3::new(1.0, 1.0, 0.0),
+    );
+
+    window.draw_text(
+        format!("Index\nEuler:\n{:#.2?}", hand.get_euler(mtg_drivers::hand::HandPart::Index)).as_str(),
+        &Point2::new(360.0, 1200.0),
+        50.0,
+        &font,
+        &Point3::new(1.0, 1.0, 0.0),
+    );
+
+    window.draw_text(
+        format!("Middle\nEuler:\n{:#.2?}", hand.get_euler(mtg_drivers::hand::HandPart::Middle)).as_str(),
+        &Point2::new(540.0, 1200.0),
+        50.0,
+        &font,
+        &Point3::new(1.0, 1.0, 0.0),
+    );
+
+    window.draw_text(
+        format!("Ring\nEuler:\n{:#.2?}", hand.get_euler(mtg_drivers::hand::HandPart::Ring)).as_str(),
+        &Point2::new(720.0, 1200.0),
+        50.0,
+        &font,
+        &Point3::new(1.0, 1.0, 0.0),
+    );
+
+    window.draw_text(
+        format!("Little\nEuler:\n{:#.2?}", hand.get_euler(mtg_drivers::hand::HandPart::Little)).as_str(),
+        &Point2::new(900.0, 1200.0),
+        50.0,
+        &font,
+        &Point3::new(1.0, 1.0, 0.0),
+    );
+
+    window.draw_text(
+        format!("Acceleration:\n{:#.2?}", hand.get_acceleration()).as_str(),
+        &Point2::new(1080.0, 1200.0),
+        50.0,
+        &font,
+        &Point3::new(1.0, 1.0, 0.0),
+    );
+
+    window.draw_text(
+        format!("Bent fingers:\n{:#.2?}", hand.get_bent_fingers()).as_str(),
+        &Point2::new(0.0, 1600.0),
+        50.0,
+        &font,
+        &Point3::new(1.0, 1.0, 0.0),
+    );
+
+    window.draw_text(
+        format!("Finger touching thumb:\n{:#.2?}", hand.get_finger_touching_thumb()).as_str(),
+        &Point2::new(360.0, 1600.0),
         50.0,
         &font,
         &Point3::new(1.0, 1.0, 0.0),

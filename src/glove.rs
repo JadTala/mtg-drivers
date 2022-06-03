@@ -8,7 +8,7 @@ use std::str;
 use std::sync::{Arc, Mutex};
 use tokio::time::sleep;
 
-use crate::hand::Hand;
+use crate::hand::{Hand, HandModel, HandPart};
 
 pub fn connect(local_name: &'static str, data_uuid: Uuid) -> Arc<Mutex<Hand>>
 {
@@ -92,24 +92,27 @@ async fn subscribe(hand: Arc<Mutex<Hand>>, local_name: &str, data_uuid: Uuid) ->
                             {
                                 println!("Subscribing to characteristic {:?}", characteristic.uuid);
                                 peripheral.subscribe(&characteristic).await?;
-
+                                
                                 let mut notification_stream =
                                     peripheral.notifications().await?;
                                 // Process while the BLE connection is not broken or stopped.
                                 while let Some(data) = notification_stream.next().await {
                                     // Convert serialized data from bytes to UTF8 string
-                                    let serialized_data = match str::from_utf8(&data.value) {
-                                        Ok(v) => v,
-                                        Err(e) => panic!("Invalid UTF-8 sequence: {}", e),
-                                    };
+                                    // let serialized_data = match str::from_utf8(&data.value) {
+                                    //     Ok(v) => v,
+                                    //     Err(e) => panic!("Invalid UTF-8 sequence: {}", e),
+                                    // };
 
-                                    println!(
-                                        "Received data from {:?} [{:?}]: {:?}",
-                                        found_local_name, data.uuid, serialized_data
-                                    );
+                                    // println!(
+                                    //     "Received data from {:?} [{:?}]: {:?}",
+                                    //     found_local_name, data.uuid, serialized_data
+                                    // );
                                     
+                                    // let mut hand = hand.lock().unwrap();
+                                    // (*hand).update_model(serde_json::from_str(serialized_data)?);
+
                                     let mut hand = hand.lock().unwrap();
-                                    (*hand).update_model(serde_json::from_str(serialized_data)?);
+                                    (*hand).update_model(HandModel::from_raw_data(data.value));
                                 }
                             }
                         }

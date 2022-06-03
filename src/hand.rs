@@ -1,17 +1,20 @@
+use std::{f32::consts::PI};
+
 use nalgebra::{Point3, distance};
 use serde::{Serialize, Deserialize};
+use strum_macros::EnumIter;
 
 const FINGERTIP_HITBOX_RADIUS: f32 = 0.01;
-const FINGER_BENDING_MIN_TRESHOLD: f32 = -60.0;
-const FINGER_BENDING_MAX_TRESHOLD: f32 = 60.0;
+const FINGER_BENDING_MIN_TRESHOLD: f32 = -60.0 / 180.0 * PI;
+const FINGER_BENDING_MAX_TRESHOLD: f32 = 60.0 / 180.0 * PI;
 
 #[derive(Default, Clone)]
 pub struct Hand {
     model: HandModel,
-    gestures: HandGestures
+    gestures: HandGestures,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, EnumIter, PartialEq)]
 pub enum HandPart
 {
     Palm,
@@ -22,7 +25,7 @@ pub enum HandPart
     Little
 }
 
-#[derive(Debug, Serialize, Deserialize, Default, Clone)]
+#[derive(Debug, Serialize, Deserialize, Default, Clone, Copy)]
 pub struct HandModel
 {
     // Cartesian coordinates
@@ -42,11 +45,22 @@ pub struct HandModel
     little_euler: [f32; 3],
 }
 
+impl HandModel {
+    pub fn from_raw_data(raw_data: Vec<u8>) -> HandModel {
+        let (head, body, _tail) = unsafe { 
+            raw_data.align_to::<HandModel>()
+        };
+        assert!(head.is_empty(), "Data was not aligned");
+        body[0]
+    }
+}
+
 #[derive(Debug, Default, Clone)]
-struct HandGestures
+pub struct HandGestures
 {
     finger_touching_thumb: Option<HandPart>,
-    bent_fingers: Vec<HandPart>
+    bent_fingers: Vec<HandPart>,
+    acceleration : [f32; 3]
 }
 
 impl Hand
@@ -104,6 +118,11 @@ impl Hand
         self.gestures.finger_touching_thumb.clone()
     }
 
+    pub fn get_acceleration(&self) -> [f32; 3]
+    {
+        self.gestures.acceleration.clone()
+    }
+
     pub fn update_model(&mut self, new_model: HandModel)
     {
         self.model = new_model;
@@ -112,49 +131,49 @@ impl Hand
 
     pub fn update_gestures(&mut self)
     {
-        // Update thumb touches finger gesture
-        if distance(&Point3::from(self.model.thumb_coords[1]), &Point3::from(self.model.index_coords[2])) <= FINGERTIP_HITBOX_RADIUS
-        {
-            self.gestures.finger_touching_thumb = Some(HandPart::Index);
-        }
-        else if distance(&Point3::from(self.model.thumb_coords[1]), &Point3::from(self.model.middle_coords[2])) <= FINGERTIP_HITBOX_RADIUS
-        {
-            self.gestures.finger_touching_thumb = Some(HandPart::Thumb);
-        }
-        else if distance(&Point3::from(self.model.thumb_coords[1]), &Point3::from(self.model.ring_coords[2])) <= FINGERTIP_HITBOX_RADIUS
-        {
-            self.gestures.finger_touching_thumb = Some(HandPart::Ring);
-        }
-        else if distance(&Point3::from(self.model.thumb_coords[1]), &Point3::from(self.model.little_coords[2])) <= FINGERTIP_HITBOX_RADIUS
-        {
-            self.gestures.finger_touching_thumb = Some(HandPart::Little);
-        }
-        else
-        {
-            self.gestures.finger_touching_thumb = None;
-        }
-
         // Update bent fingers gesture
         self.gestures.bent_fingers.clear();
-        if FINGER_BENDING_MIN_TRESHOLD <= self.model.thumb_euler[1] && self.model.thumb_euler[1] <= FINGER_BENDING_MAX_TRESHOLD
+        if !(FINGER_BENDING_MIN_TRESHOLD <= self.model.thumb_euler[1] && self.model.thumb_euler[1] <= FINGER_BENDING_MAX_TRESHOLD)
         {
             self.gestures.bent_fingers.push(HandPart::Thumb);
         }
-        if FINGER_BENDING_MIN_TRESHOLD <= self.model.index_euler[1] && self.model.index_euler[1] <= FINGER_BENDING_MAX_TRESHOLD
+        if !(FINGER_BENDING_MIN_TRESHOLD <= self.model.index_euler[1] && self.model.index_euler[1] <= FINGER_BENDING_MAX_TRESHOLD)
         {
             self.gestures.bent_fingers.push(HandPart::Index);
         }
-        if FINGER_BENDING_MIN_TRESHOLD <= self.model.middle_euler[1] && self.model.middle_euler[1] <= FINGER_BENDING_MAX_TRESHOLD
+        if !(FINGER_BENDING_MIN_TRESHOLD <= self.model.middle_euler[1] && self.model.middle_euler[1] <= FINGER_BENDING_MAX_TRESHOLD)
         {
             self.gestures.bent_fingers.push(HandPart::Middle);
         }
-        if FINGER_BENDING_MIN_TRESHOLD <= self.model.ring_euler[1] && self.model.ring_euler[1] <= FINGER_BENDING_MAX_TRESHOLD
+        if !(FINGER_BENDING_MIN_TRESHOLD <= self.model.ring_euler[1] && self.model.ring_euler[1] <= FINGER_BENDING_MAX_TRESHOLD)
         {
             self.gestures.bent_fingers.push(HandPart::Ring);
         }
-        if FINGER_BENDING_MIN_TRESHOLD <= self.model.little_euler[1] && self.model.little_euler[1] <= FINGER_BENDING_MAX_TRESHOLD
+        if !(FINGER_BENDING_MIN_TRESHOLD <= self.model.little_euler[1] && self.model.little_euler[1] <= FINGER_BENDING_MAX_TRESHOLD)
         {
             self.gestures.bent_fingers.push(HandPart::Little);
+        }
+
+        self.gestures.finger_touching_thumb = None;
+        // Update thumb touches finger gesture
+        if self.gestures.bent_fingers.contains(&HandPart::Thumb)
+        {
+            if self.gestures.bent_fingers.contains(&HandPart::Index)
+            {
+                self.gestures.finger_touching_thumb = Some(HandPart::Index);
+            }
+            else if self.gestures.bent_fingers.contains(&HandPart::Middle)
+            {
+                self.gestures.finger_touching_thumb = Some(HandPart::Middle);
+            }
+            else if self.gestures.bent_fingers.contains(&HandPart::Ring)
+            {
+                self.gestures.finger_touching_thumb = Some(HandPart::Ring);
+            }
+            else if self.gestures.bent_fingers.contains(&HandPart::Little)
+            {
+                self.gestures.finger_touching_thumb = Some(HandPart::Little);
+            }
         }
     }
 }
