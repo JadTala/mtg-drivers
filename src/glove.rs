@@ -1,14 +1,17 @@
 use btleplug::api::{Central, CharPropFlags, Manager as _, Peripheral, ScanFilter};
 use btleplug::platform::Manager;
 use futures::stream::StreamExt;
+use log::{error, info, debug};
 use std::error::Error;
 use std::time::Duration;
 use uuid::Uuid;
 use std::str;
 use std::sync::{Arc, Mutex};
 use tokio::time::sleep;
+use ansi_term::Colour::Green;
+use ansi_term::Colour::Black;
 
-use crate::hand::{Hand, HandModel, HandPart};
+use crate::hand::{Hand, HandModel};
 
 pub fn connect(local_name: &'static str, data_uuid: Uuid) -> Arc<Mutex<Hand>>
 {
@@ -34,12 +37,12 @@ async fn subscribe(hand: Arc<Mutex<Hand>>, local_name: &str, data_uuid: Uuid) ->
     let adapter_list = manager.adapters().await?;
     if adapter_list.is_empty()
     {
-        eprintln!("No Bluetooth adapters found!");
+        error!("No Bluetooth adapters found!");
     }
 
     for adapter in adapter_list.iter()
     {
-        println!("Starting scan...");
+        info!("{}", Black.underline().paint("Starting scan..."));
         adapter
             .start_scan(ScanFilter::default())
             .await
@@ -49,7 +52,7 @@ async fn subscribe(hand: Arc<Mutex<Hand>>, local_name: &str, data_uuid: Uuid) ->
 
         if peripherals.is_empty()
         {
-            eprintln!("No peripheral found!");
+            error!("No peripheral found!");
         } 
         else
         {
@@ -57,72 +60,58 @@ async fn subscribe(hand: Arc<Mutex<Hand>>, local_name: &str, data_uuid: Uuid) ->
             for peripheral in peripherals.iter() {
                 let properties = peripheral.properties().await?;
                 let is_connected = peripheral.is_connected().await?;
-                let found_local_name = properties
+                let target_local_name = properties
                     .unwrap()
                     .local_name
                     .unwrap_or(String::from("Unknown"));
-                println!(
-                    "Peripheral {:?} is connected: {:?}",
-                    &found_local_name, is_connected
+                info!(
+                    "Peripheral {} found.",
+                    Green.bold().paint(&target_local_name)
                 );
                 // Check if it's the peripheral we want.
-                if found_local_name.eq(local_name) {
-                    println!("Found matching peripheral {:?}...", &found_local_name);
+                if target_local_name.eq(local_name) {
+                    info!("Found matching peripheral {}.", Green.bold().paint(&target_local_name));
                     if !is_connected {
                         // Connect if we aren't already connected.
                         if let Err(err) = peripheral.connect().await {
-                            eprintln!("Error connecting to peripheral, skipping: {}", err);
+                            error!("Error connecting to peripheral, skipping: {}", err);
                             continue;
                         }
                     }
                     let is_connected = peripheral.is_connected().await?;
-                    println!(
+                    debug!(
                         "Now connected ({:?}) to peripheral {:?}.",
                         is_connected, &local_name
                     );
                     if is_connected {
-                        println!("Discover peripheral {:?} services...", local_name);
+                        info!("{}", Black.underline().paint("Discovering peripheral services..."));
                         peripheral.discover_services().await?;
                         for characteristic in peripheral.characteristics() {
-                            println!("Checking characteristic {:?}", characteristic);
+                            info!("Checking characteristic {:?}.", characteristic);
                             // Subscribe to notifications from the characteristic with the selected
                             // UUID.
                             if characteristic.uuid == data_uuid
                                 && characteristic.properties.contains(CharPropFlags::NOTIFY)
                             {
-                                println!("Subscribing to characteristic {:?}", characteristic.uuid);
+                                info!("Subscribing to characteristic {:?}.", characteristic.uuid);
                                 peripheral.subscribe(&characteristic).await?;
                                 
                                 let mut notification_stream =
                                     peripheral.notifications().await?;
                                 // Process while the BLE connection is not broken or stopped.
                                 while let Some(data) = notification_stream.next().await {
-                                    // Convert serialized data from bytes to UTF8 string
-                                    // let serialized_data = match str::from_utf8(&data.value) {
-                                    //     Ok(v) => v,
-                                    //     Err(e) => panic!("Invalid UTF-8 sequence: {}", e),
-                                    // };
-
-                                    // println!(
-                                    //     "Received data from {:?} [{:?}]: {:?}",
-                                    //     found_local_name, data.uuid, serialized_data
-                                    // );
-                                    
-                                    // let mut hand = hand.lock().unwrap();
-                                    // (*hand).update_model(serde_json::from_str(serialized_data)?);
-
                                     let mut hand = hand.lock().unwrap();
                                     (*hand).update_model(HandModel::from_raw_data(data.value));
                                 }
                             }
                         }
-                        println!("Disconnecting from peripheral {:?}...", found_local_name);
+                        info!("Disconnecting from peripheral {:?}...", Green.bold().paint(target_local_name));
                         peripheral.disconnect().await?;
                     }
                 }
                 else
                 {
-                    println!("Skipping unknown peripheral {:?}", peripheral);
+                    info!("{}", Black.italic().paint("Not the desired peripheral, skipping..."));
                 }
             }
         }

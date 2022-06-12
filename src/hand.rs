@@ -1,10 +1,8 @@
 use std::{f32::consts::PI};
 
-use nalgebra::{Point3, distance};
 use serde::{Serialize, Deserialize};
 use strum_macros::EnumIter;
 
-const FINGERTIP_HITBOX_RADIUS: f32 = 0.01;
 const FINGER_BENDING_MIN_TRESHOLD: f32 = -60.0 / 180.0 * PI;
 const FINGER_BENDING_MAX_TRESHOLD: f32 = 60.0 / 180.0 * PI;
 
